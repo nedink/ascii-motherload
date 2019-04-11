@@ -1,0 +1,5 @@
+out/
+.*/
+*.iml
+***/META-INF/
+.DS_Store
