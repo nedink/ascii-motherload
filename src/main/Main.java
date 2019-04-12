@@ -1,5 +1,6 @@
 package main;
 
+import java.io.*;
 import java.util.Scanner;
 
 import static main.Direction.*;
@@ -15,18 +16,21 @@ public class Main {
     static Scanner sc;
     static Drill drill;
     static FuelTank fuelTank;
-    static long $$$ = 0;
+    static long $$$;
     static CargoBay cargoBay;
     static String error = ConsoleCode.RESET + "                                                                    \n";
     static boolean running;
+    static boolean quitting = false;
+    static boolean saving = false;
+    static Confirmation confirmation = null;
+    static boolean confirmResult = false;
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws IOException, ClassNotFoundException, InterruptedException {
 
-        player = new Player();
-        drill = new Drill(1);
-        cargoBay = new CargoBay(1);
-        fuelTank = new FuelTank(1);
-        world = new World();
+        newGame();
+
+//        confirmation = Confirmation.LOAD;
+        loadSave();
 
         sc = new Scanner(System.in);
         running = true;
@@ -49,24 +53,51 @@ public class Main {
 
             System.out.print(out);
 
-            if (!player.alive)
-                System.exit(0);
+            if (!player.alive) {
+                return;
+            }
 
             error = ConsoleCode.RESET + "                                                                    \n";
 
             // get input
             command = sc.nextLine().trim();
 
+            if (confirmation != null) {
+                confirmResult = false;
+                switch (command) {
+                    case "yes":
+                        confirmation.getSuccessAction().run();
+                        break;
+                    case "y":
+                        confirmation.getSuccessAction().run();
+                        break;
+                    default:
+                        confirmation.getFailureAction().run();
+                        break;
+                }
+                continue;
+            }
+
             Tile minedTile = null;
             switch (command) {
-                case "exit":
-                    running = false;
+                case "new":
+                    confirmation = Confirmation.NEW_GAME;
+                    System.out.println("\r" + confirmation.getMessage() + "                                                                    ");
                     break;
                 case "quit":
-                    running = false;
+                    confirmation = Confirmation.QUIT;
+                    System.out.print("\r" + confirmation.getMessage() + "                                                                    ");
+                    break;
+                case "exit":
+                    confirmation = Confirmation.QUIT;
+                    System.out.print("\r" + confirmation.getMessage() + "                                                                    ");
                     break;
                 case "q":
-                    running = false;
+                    confirmation = Confirmation.QUIT;
+                    System.out.print("\r" + confirmation.getMessage() + "                                                                    ");
+                    break;
+                case "save":
+                    save();
                     break;
                 case "w":
                     minedTile = move(UP);
@@ -156,7 +187,6 @@ public class Main {
     }
 
     static StringBuilder drawWindow() {
-
         // get world window
         String[][] world = new String[WINDOW_H][WINDOW_W];
         for (int r = 0; r < WINDOW_H; r++) {
@@ -164,7 +194,6 @@ public class Main {
                 // add tile
                 int row = r + player.getRow() - WINDOW_H / 2, col = c + player.getCol() - WINDOW_W / 2;
                 if (row == player.getRow() && col == player.getCol()) {
-                    System.out.println(player);
                     Tile tile = Main.world.getTile(player.getRow(), player.getCol() - 1);
                     world[r][c] = (tile == Tile.AIR ? Tile.AIR.backgroundColor.toString() : Tile.TUNNEL.backgroundColor) + player.toString();
                 }
@@ -242,57 +271,58 @@ public class Main {
         return opposingTile;
     }
 
-    static String tierString(int tier) {
-        switch (tier) {
-            case 1: return "I";
-            case 2: return "II";
-            case 3: return "III";
-            case 4: return "IV";
-            case 5: return "V";
-            case 6: return "VI";
-            case 7: return "VII";
-            default: return "";
-        }
+    static void newGame() {
+        world = new World();
+        player = new Player();
+        drill = new Drill(1);
+        cargoBay = new CargoBay(1);
+        fuelTank = new FuelTank(1);
+        $$$ = 0;
     }
 
-    static String shopsGraphic() {
-        StringBuilder sb = new StringBuilder();
-        if (player.getRow() > 0) {
-            for (int i = 0; i < 9; i++)
-                sb.append("                                                                                        \n");
-            return sb.toString();
+    static void save() throws IOException {
+        System.out.print("\n\rSaving...                              ");
+        saving = true;
+        File saveFile = new File(".save");
+        saveFile.createNewFile();
+        ObjectOutputStream outputStream = new ObjectOutputStream(new FileOutputStream(saveFile));
+        outputStream.writeObject(world);
+        outputStream.writeObject(player);
+        outputStream.writeObject($$$);
+        outputStream.writeObject(drill);
+        outputStream.writeObject(cargoBay);
+        outputStream.writeObject(fuelTank);
+        outputStream.close();
+        System.out.print("\rSaved!                                    ");
+        saving = false;
+    }
+
+    static void saveAndQuit() throws IOException {
+        save();
+        running = false;
+    }
+
+    static void loadSave() throws IOException {
+        File saveFile = new File(".save");
+        if (saveFile.exists()) {
+            System.out.println("Loading save...");
+            ObjectInputStream inputStream = new ObjectInputStream(new FileInputStream(saveFile));
+            try {
+                world = (World) inputStream.readObject();
+                player = (Player) inputStream.readObject();
+                $$$ = (long) inputStream.readObject();
+                drill = (Drill) inputStream.readObject();
+                cargoBay = (CargoBay) inputStream.readObject();
+                fuelTank = (FuelTank) inputStream.readObject();
+            }
+            catch (Exception e) {
+                error = ConsoleCode.TERMINALBELL + (ConsoleCode.RED_BACKGROUND_BRIGHT + "Save file corrupted.                       \n");
+            }
+            inputStream.close();
+            System.out.print("\r                                                   ");
+            return;
         }
-        return sb
-                .append("fuel | f - REFUEL (cost: $").append((fuelTank.getCapacity() - fuelTank.getFuel()) * 5).append(")")
-                .append("                                          \n")
-                .append("sell | e - SELL MINERALS (total: $").append(cargoBay.getTotalSellValue()).append(")")
-                .append("                                          \n")
-                .append("drill - UPGRADE DRILL ")
-                .append(tierString(drill.getTier())).append(" -> ").append(tierString(drill.getTier() + 1))
-                .append(" (cost: $").append(drill.getCost(drill.getTier() + 1)).append(")")
-                .append("                                          \n")
-                .append("hull - UPGRADE HULL ")
-                .append(tierString(drill.getTier())).append(" -> ").append(tierString(drill.getTier() + 1))
-                .append(" (cost: $").append(drill.getCost(drill.getTier() + 1)).append(")")
-                .append("                                          \n")
-                .append("engine - UPGRADE ENGINE ")
-                .append(tierString(drill.getTier())).append(" -> ").append(tierString(drill.getTier() + 1))
-                .append(" (cost: $").append(drill.getCost(drill.getTier() + 1)).append(")")
-                .append("                                          \n")
-                .append("tank - UPGRADE FUEL TANK ")
-                .append(tierString(fuelTank.getTier())).append(" -> ").append(tierString(fuelTank.getTier() + 1))
-                .append(" (cost: $").append(fuelTank.getCost(fuelTank.getTier() + 1)).append(")")
-                .append("                                          \n")
-                .append("radiator - UPGRADE RADIATOR ")
-                .append(tierString(drill.getTier())).append(" -> ").append(tierString(drill.getTier() + 1))
-                .append(" (cost: $").append(drill.getCost(drill.getTier() + 1)).append(")")
-                .append("                                          \n")
-                .append("cargo - UPGRADE CARGO BAY ")
-                .append(tierString(cargoBay.getTier())).append(" -> ").append(tierString(cargoBay.getTier() + 1))
-                .append(" (cost: $").append(cargoBay.getCost(cargoBay.getTier() + 1)).append(")")
-                .append("                                          \n")
-                .append("                                          \n")
-                .toString();
+        error = ConsoleCode.TERMINALBELL + (ConsoleCode.RED_BACKGROUND_BRIGHT + "No save file exists.                       \n");
     }
 
     static void sell() {
@@ -332,5 +362,58 @@ public class Main {
         $$$ -= part.getCost(part.tier + 1);
         part.upgrade();
         error = ConsoleCode.GREEN_BRIGHT + "Upgraded part from " + tierString(part.getTier() - 1) + " -> " + tierString(part.getTier()) + " for $" + part.getCost() + "." + ConsoleCode.RESET + "                  \n";
+    }
+
+    static String tierString(int tier) {
+        switch (tier) {
+            case 1: return "I";
+            case 2: return "II";
+            case 3: return "III";
+            case 4: return "IV";
+            case 5: return "V";
+            case 6: return "VI";
+            case 7: return "VII";
+            default: return "";
+        }
+    }
+
+    static String shopsGraphic() {
+        StringBuilder sb = new StringBuilder();
+        if (player.getRow() > 0) {
+            for (int i = 0; i < 9; i++)
+                sb.append("                                                                                        \n");
+            return sb.toString();
+        }
+        return sb
+                .append("sell | e - SELL MINERALS (total: $").append(cargoBay.getTotalSellValue()).append(")")
+                .append("                                          \n")
+                .append("fuel | f - REFUEL (cost: $").append((fuelTank.getCapacity() - fuelTank.getFuel()) * 5).append(")")
+                .append("                                          \n")
+                .append("drill - UPGRADE DRILL ")
+                .append(tierString(drill.getTier())).append(" -> ").append(tierString(drill.getTier() + 1))
+                .append(" (cost: $").append(drill.getCost(drill.getTier() + 1)).append(")")
+                .append("                                          \n")
+                .append("hull - UPGRADE HULL ")
+                .append(tierString(drill.getTier())).append(" -> ").append(tierString(drill.getTier() + 1))
+                .append(" (cost: $").append(drill.getCost(drill.getTier() + 1)).append(")")
+                .append("                                          \n")
+                .append("engine - UPGRADE ENGINE ")
+                .append(tierString(drill.getTier())).append(" -> ").append(tierString(drill.getTier() + 1))
+                .append(" (cost: $").append(drill.getCost(drill.getTier() + 1)).append(")")
+                .append("                                          \n")
+                .append("tank - UPGRADE FUEL TANK ")
+                .append(tierString(fuelTank.getTier())).append(" -> ").append(tierString(fuelTank.getTier() + 1))
+                .append(" (cost: $").append(fuelTank.getCost(fuelTank.getTier() + 1)).append(")")
+                .append("                                          \n")
+                .append("radiator - UPGRADE RADIATOR ")
+                .append(tierString(drill.getTier())).append(" -> ").append(tierString(drill.getTier() + 1))
+                .append(" (cost: $").append(drill.getCost(drill.getTier() + 1)).append(")")
+                .append("                                          \n")
+                .append("cargo - UPGRADE CARGO BAY ")
+                .append(tierString(cargoBay.getTier())).append(" -> ").append(tierString(cargoBay.getTier() + 1))
+                .append(" (cost: $").append(cargoBay.getCost(cargoBay.getTier() + 1)).append(")")
+                .append("                                          \n")
+                .append("                                          \n")
+                .toString();
     }
 }

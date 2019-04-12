@@ -1,10 +1,11 @@
 package main;
 
+import java.io.Serializable;
 import java.util.*;
 
 import static main.Tile.*;
 
-public class World {
+public class World implements Serializable {
 
     public static final int GEN_RADIUS = 4;
 

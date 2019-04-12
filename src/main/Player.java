@@ -1,6 +1,8 @@
 package main;
 
-public class Player {
+import java.io.Serializable;
+
+public class Player implements Serializable {
 
     private static final String string = "MM";
     private static final ConsoleCode color = ConsoleCode.WHITE_BOLD_BRIGHT;
