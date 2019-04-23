@@ -15,23 +15,24 @@ public enum Confirmation {
         Main.confirmation = SAVE_ON_QUIT;
         System.out.print("\r" + Main.confirmation.getMessage() + "                                                                    ");
     }, () -> {
-        System.out.print("\r                                                                    ");
         Main.confirmation = null;
+        System.out.print("\r                                                                    ");
     }),
     LOAD("Load save? y/n", () -> {
         try { Main.loadSave(); }
         catch (IOException e) { e.printStackTrace(); }
         Main.confirmation = null;
     }, () -> {
-        System.out.print("\r                                                                    ");
         Main.confirmation = null;
+        System.out.print("\r                                                                    ");
     }),
     NEW_GAME("Start a new game? y/n", () -> {
         Main.newGame();
         Main.confirmation = null;
-    }, () -> {
         System.out.print("\r                                                                    ");
+    }, () -> {
         Main.confirmation = null;
+        System.out.print("\r                                                                    ");
     })
 
     ;

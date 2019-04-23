@@ -42,7 +42,7 @@ public class World implements Serializable {
 
         if (r.nextDouble() < 1d / 300d * (log - 200)) return LAVA;
         if (r.nextDouble() < 1d / 300d * (log - 100)) return STONE;
-        if (r.nextDouble() < 1d / 3d) return DIRT;
+        if (r.nextDouble() < 2d / 3d) return DIRT;
         if (r.nextDouble() < 1 / 100d * (log - 350)) {return AMAZONITE;}
         if (r.nextDouble() < 1 / 100d * (log - 300)) {return DIAMOND;}
         if (r.nextDouble() < 1 / 100d * (log - 250)) {return RUBY;}

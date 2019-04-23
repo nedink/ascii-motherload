@@ -20,6 +20,8 @@ public abstract class Part implements Serializable {
 
     public abstract int getCost(int tier);
 
+    public abstract String getName();
+
     public void upgrade() {
         this.tier++;
     }

@@ -44,6 +44,11 @@ public class CargoBay extends Part {
         return haul;
     }
 
+    @Override
+    public String getName() {
+        return "Cargo Bay";
+    }
+
     public int getCurrentLoad() {
         return haul.values().stream().mapToInt(i -> i).sum();
     }
@@ -62,7 +67,7 @@ public class CargoBay extends Part {
     public String guageGraphic() {
         StringBuilder sb = new StringBuilder();
         float percent = (float) getCurrentLoad() / getCarryingCapacity();
-        sb.append("CARGO BAY [").append(percent > 0.5 ? percent > 0.8 ? ConsoleCode.RED_BACKGROUND : ConsoleCode.YELLOW_BACKGROUND : ConsoleCode.GREEN_BACKGROUND);
+        sb.append("CARGO BAY ").append(Main.tierString(tier)).append(" [").append(percent > 0.5 ? percent > 0.8 ? ConsoleCode.RED_BACKGROUND : ConsoleCode.YELLOW_BACKGROUND : ConsoleCode.GREEN_BACKGROUND);
         for (int i = 0; i < 30; i++) {
             if (i < percent * 30) {
                 sb.append(percent > 0.5 ? percent > 0.8 ? ConsoleCode.RED_BACKGROUND : ConsoleCode.YELLOW_BACKGROUND : ConsoleCode.GREEN_BACKGROUND)
@@ -73,7 +78,8 @@ public class CargoBay extends Part {
                         .append(i % 3 == 1 ? "/" : " ");
             }
         }
-        sb.append(ConsoleCode.RESET).append("]");
+        sb.append(ConsoleCode.RESET).append("] ").append(getCurrentLoad()).append("/").append(getCarryingCapacity())
+                .append(" (").append((int) (100 * (getCurrentLoad() / (float) getCarryingCapacity()))).append("%)");
         return sb.toString();
     }
 
@@ -91,13 +97,13 @@ public class CargoBay extends Part {
                         .append(" = $")
                         .append(m.sellValue * haul.get(m))
                         .append(ConsoleCode.RESET);
-                if (Main.player.getRow() == 0);
+                if (Main.player.getRow() == 0) ;
 //                    sb
 //                            .append(" x")
 //                    .append(haul.get(m))
             }
 
-        sb.append("                                         \n");
+            sb.append("                                         \n");
         }
         return sb.toString();
     }
